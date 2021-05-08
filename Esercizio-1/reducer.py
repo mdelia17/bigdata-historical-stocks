@@ -80,4 +80,4 @@ for ticker in ticker_2_set:
         ticker_2_set[ticker][8] = ticker_2_set[ticker][6]
         ticker_2_set[ticker][9] = ticker_2_set[ticker][7]
 
-    print("%s\t%s\t%s\t%f\t%f\t%f\t%i\t%i" % (ticker, ticker_2_set[ticker][0], ticker_2_set[ticker][2], percentuale, ticker_2_set[ticker][4], ticker_2_set[ticker][5], ticker_2_set[ticker][8], ticker_2_set[ticker][9]))
+    print("%s\t%s\t%s\t%f\t%f\t%f\t%i\t%i" % (ticker, ticker_2_set[ticker][0], ticker_2_set[ticker][2], percentuale, ticker_2_set[ticker][5], ticker_2_set[ticker][4], ticker_2_set[ticker][8], ticker_2_set[ticker][9]))
