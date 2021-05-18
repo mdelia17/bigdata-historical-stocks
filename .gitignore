@@ -12,4 +12,7 @@ dataset/
 .ipynb_checkpoints
 
 ### .pem ###
-marco-delia-bigdata.pem
+*.pem
+
+### .sh ###
+*.sh
