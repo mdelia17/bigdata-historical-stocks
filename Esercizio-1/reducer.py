@@ -11,7 +11,6 @@ for line in sys.stdin:
     
     line = line.strip()
     ticker, open, close, low, high, date = line.split("\t")
-    #print(type(date))
     try:
         open = float(open)
         close = float(close)
@@ -22,29 +21,17 @@ for line in sys.stdin:
         continue
 
     if ticker not in ticker_2_set:
-        ticker_2_set[ticker] = list()
-        # data prima quotazione
-        ticker_2_set[ticker].append(date) 
-        # chiusura prima quotazione
-        ticker_2_set[ticker].append(close)
-        # data ultima quotazione
-        ticker_2_set[ticker].append(date) 
-        # chiusura utlima quotazione
-        ticker_2_set[ticker].append(close) 
-        # prezzo minimo
-        ticker_2_set[ticker].append(low) 
-        # prezzo massimo
-        ticker_2_set[ticker].append(high) 
-        # cont strike
-        ticker_2_set[ticker].append(0) 
-        # anno fine strike
-        ticker_2_set[ticker].append(date.year) 
-        # strike max
-        ticker_2_set[ticker].append(0) 
-        # anno strike max
-        ticker_2_set[ticker].append(date.year) 
-        if (open < close):
-            ticker_2_set[ticker][6] += 1
+        ticker_2_set[ticker] = [date,close,date,close,low,high] 
+        # # cont strike
+        # ticker_2_set[ticker].append(0) 
+        # # anno fine strike
+        # ticker_2_set[ticker].append(date.year) 
+        # # strike max
+        # ticker_2_set[ticker].append(0) 
+        # # anno strike max
+        # ticker_2_set[ticker].append(date.year) 
+        # if (open < close):
+        #     ticker_2_set[ticker][6] += 1
 
     else:
         if (date < ticker_2_set[ticker][0]):
@@ -57,27 +44,28 @@ for line in sys.stdin:
             ticker_2_set[ticker][4] = low
         if (high > ticker_2_set[ticker][5]):
             ticker_2_set[ticker][5] = high
-        if (open < close):
-            ticker_2_set[ticker][6] += 1
-            ticker_2_set[ticker][7] = date.year
-        else: 
-            if (ticker_2_set[ticker][6] > ticker_2_set[ticker][8]):
-                ticker_2_set[ticker][8] = ticker_2_set[ticker][6]
-                ticker_2_set[ticker][6] = 0
-                ticker_2_set[ticker][9] = ticker_2_set[ticker][7]
+        # if (open < close):
+        #     ticker_2_set[ticker][6] += 1
+        #     ticker_2_set[ticker][7] = date.year
+        # else: 
+        #     if (ticker_2_set[ticker][6] > ticker_2_set[ticker][8]):
+        #         ticker_2_set[ticker][8] = ticker_2_set[ticker][6]
+        #         ticker_2_set[ticker][6] = 0
+        #         ticker_2_set[ticker][9] = ticker_2_set[ticker][7]
 
 sorted = sorted(ticker_2_set.items(), key=lambda x: x[1][2], reverse=True)
 
-for i in sorted:
-    ticker_2_set[i[0]] = i[1]
+for t in sorted:
+#     ticker_2_set_ordered[i[0]] = i[1]
 
-# ciclo per ogni chiave
-for ticker in ticker_2_set:
+# # ciclo per ogni chiave
+# for ticker in ticker_2_set:
 
-    percentuale = (ticker_2_set[ticker][3] - ticker_2_set[ticker][1])/ticker_2_set[ticker][1] * 100
+    percentuale = (t[1][3] - t[1][1])/t[1][1] * 100
 
-    if (ticker_2_set[ticker][6] > ticker_2_set[ticker][8]): 
-        ticker_2_set[ticker][8] = ticker_2_set[ticker][6]
-        ticker_2_set[ticker][9] = ticker_2_set[ticker][7]
+    # if (ticker_2_set[ticker][6] > ticker_2_set[ticker][8]): 
+    #     ticker_2_set[ticker][8] = ticker_2_set[ticker][6]
+    #     ticker_2_set[ticker][9] = ticker_2_set[ticker][7]
 
-    print("%s\t%s\t%s\t%f\t%f\t%f\t%i\t%i" % (ticker, ticker_2_set[ticker][0], ticker_2_set[ticker][2], percentuale, ticker_2_set[ticker][5], ticker_2_set[ticker][4], ticker_2_set[ticker][8], ticker_2_set[ticker][9]))
+    print("%s\t%s\t%s\t%f\t%f\t%f" % (t[0], t[1][0], t[1][2], percentuale, t[1][5], t[1][4]))
+    # , t[1][8], t[1][9]

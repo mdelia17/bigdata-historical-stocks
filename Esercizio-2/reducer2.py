@@ -6,23 +6,19 @@ from datetime import datetime
 
 TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 sector_2_set ={}
+
 for line in sys.stdin:
-    # print(line)
     line = line.strip()
-    # al posto di ticker ci dovrebbe essere sector
-    ticker, date, close, volume, sector = line.split("\t")
+    sector, ticker, date, close, volume = line.split("\t")
     try:
         date = datetime.strptime(date, TIMESTAMP_FORMAT)
         close = float(close)
         volume = int(volume)
-    except ValueError:
+    except ValueError as e:
+        print(e)
         continue
     if (sector, date.year) not in sector_2_set:
-        sector_2_set[(sector, date.year)] = list()
-        sector_2_set[(sector, date.year)].append(date)
-        sector_2_set[(sector, date.year)].append(date)
-        sector_2_set[(sector, date.year)].append([close])
-        sector_2_set[(sector, date.year)].append([close])
+        sector_2_set[(sector, date.year)] = [date, date, [close], [close]]
         sector_2_set[(sector, date.year)].append({ticker: [date, date, close, close, volume]})
     else: 
         if sector_2_set[(sector, date.year)][0] == date: 
@@ -35,14 +31,9 @@ for line in sys.stdin:
         if sector_2_set[(sector, date.year)][1] < date: 
             sector_2_set[(sector, date.year)][1] = date
             sector_2_set[(sector, date.year)][3] = [close]
-        # per il dict di ticker
+
         if ticker not in sector_2_set[(sector, date.year)][4]:
-            sector_2_set[(sector, date.year)][4] = {ticker: list()} # non avevamo creato il dizionario con poi dentro la lista
-            sector_2_set[(sector, date.year)][4][ticker].append(date)
-            sector_2_set[(sector, date.year)][4][ticker].append(date)
-            sector_2_set[(sector, date.year)][4][ticker].append(close)
-            sector_2_set[(sector, date.year)][4][ticker].append(close)
-            sector_2_set[(sector, date.year)][4][ticker].append(volume)
+            sector_2_set[(sector, date.year)][4][ticker] = [date, date, close, close, volume] 
         else:
             if sector_2_set[(sector, date.year)][4][ticker][0] > date:
                 sector_2_set[(sector, date.year)][4][ticker][0] = date
@@ -52,27 +43,23 @@ for line in sys.stdin:
                 sector_2_set[(sector, date.year)][4][ticker][3] = close
             sector_2_set[(sector, date.year)][4][ticker][4] += volume    
         
-            
-# keys = list (prices_2_set.keys())
-for key in sector_2_set:
-    # print(str(key))
-    percentuale = (sum(sector_2_set[key][3])-sum(sector_2_set[key][2]))/sum(sector_2_set[key][2]) * 100
-    # ticker_percent_max = ""
-    # percentuale_max = 0.0
+sorted_sector_2_set = sorted(sector_2_set.items(), key=lambda x: x[0][0], reverse=False)
+for elem in sorted_sector_2_set:
+    percentuale = (sum(elem[1][3])-sum(elem[1][2]))/sum(elem[1][2]) * 100
+    ticker_percent_max = ""
+    percentuale_max = -1000000000000
     ticker_volume_max = ""
     volume_max = 0.0
+    ticker_2_set = elem[1][4]
+    
+    for ticker in ticker_2_set:
+        percentuale2 = (ticker_2_set[ticker][3] - ticker_2_set[ticker][2])/ticker_2_set[ticker][2] * 100
+        if percentuale2 > percentuale_max :
+            ticker_percent_max = ticker
+            percentuale_max = percentuale2
+        if ticker_2_set[ticker][4] > volume_max :
+            ticker_volume_max = ticker
+            volume_max = ticker_2_set[ticker][4]
 
-    # Troviamo l'azione con maggiore percentuale e volume per un settore in un certo anno
-    for key_int in sector_2_set[key][4]:
-        # print(str(key_int), sector_2_set[key][4][key_int][3], sector_2_set[key][4][key_int][2])
-        # il problema è che l'azione compare solo una volta in un certo settore in un anno e quindi la differenza percentuale è 0
-        # percentuale2 = (sector_2_set[key][4][key_int][3] - sector_2_set[key][4][key_int][2])/sector_2_set[key][4][key_int][2] * 100
-        # if percentuale2 > percentuale_max :
-        #     ticker_percent_max = key_int
-        #     percentuale_max = percentuale2
-        if sector_2_set[key][4][key_int][4] > volume_max :
-            ticker_volume_max = key_int
-            volume_max = sector_2_set[key][4][key_int][4]
-    # Quando usciamo da questo ciclo interno abbiamo, per il settore in un certo anno l'azione con percentuale e volume maggiore e la stampiamo
-    print("%s\t%s\t%f\t%s\t%i" % (key[0], key[1], percentuale, ticker_volume_max, volume_max ))
-    # da aggiungere \t%s\t%f ticker_percent_max, percentuale_max
+    print("%s\t%s\t%f\t%s\t%f\t%s\t%i" % (elem[0][0], elem[0][1], percentuale, ticker_percent_max, percentuale_max, ticker_volume_max, volume_max))
+

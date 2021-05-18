@@ -5,7 +5,7 @@ import sys
 
 for line in sys.stdin:
     line = line.strip()
-    print(line)
-    # al reducer devono arrivare tutte le righe di uno stesso settore
+    ticker, date, close, volume, sector = line.split("\t")
+    print('%s\t%s\t%s\t%s\t%s' % (sector, ticker, date, close, volume))
 
     
