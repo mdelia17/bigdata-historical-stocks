@@ -10,3 +10,6 @@ dataset/
 
 ### Jupyter ###
 .ipynb_checkpoints
+
+### .pem ###
+marco-delia-bigdata.pem
