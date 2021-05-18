@@ -8,6 +8,7 @@
 ### Folders ###
 dataset/
 output/
+other_dataset/
 
 ### Jupyter ###
 .ipynb_checkpoints
