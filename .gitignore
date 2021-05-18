@@ -5,8 +5,9 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 
-### Dataset ###
+### Folders ###
 dataset/
+output/
 
 ### Jupyter ###
 .ipynb_checkpoints
