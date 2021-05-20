@@ -1,111 +1,98 @@
 CREATE TABLE prices (ticker STRING,
-                   open FLOAT,
-                   close FLOAT,
-                   adj_close FLOAT,
-                   low FLOAT,
-                   high FLOAT,
-                   volume FLOAT,
-                   ticker_date DATE)
+                     open DECIMAL(38,5),
+                     close DECIMAL(38,5),
+                     adj_close DECIMAL(38,5),
+                     low DECIMAL(38,5),
+                     high DECIMAL(38,5),
+                     volume INTEGER,
+                     ticker_date DATE)
     ROW FORMAT DELIMITED
-    FIELDS TERMINATED BY ',';
+    FIELDS TERMINATED BY ','
+LOCATION 's3://bucket-dataset-bigdata2/historical_stock_prices_clean/';
 
 CREATE TABLE stocks (ticker STRING,
-                   exc STRING,
-                   name STRING,
-                   sector STRING,
-                   industry STRING)
+                     exc STRING,
+                     name STRING,
+                     sector STRING,
+                     industry STRING)
     ROW FORMAT DELIMITED
-    FIELDS TERMINATED BY ',';
+    FIELDS TERMINATED BY ','
+LOCATION 's3://bucket-dataset-bigdata2/historical_stocks_clean/';
 
-LOAD DATA LOCAL INPATH './Progetto/historical_stock_prices_clean.csv'
-                        OVERWRITE INTO TABLE prices;
-
-LOAD DATA LOCAL INPATH './Progetto/historical_stocks_clean.csv'
-                        OVERWRITE INTO TABLE stocks;
-
--- 1) per ogni giorno la quotazione 
-CREATE TABLE v1 AS
+-- 1) per ogni settore e per ogni giorno la quotazione del settore (somma dei prezzi di chiusura delle azioni del settore)
+CREATE VIEW t1 AS
 SELECT ss.sector, ps.ticker_date AS day, SUM(ps.close) AS quotation
 FROM stocks AS ss JOIN prices AS ps ON ss.ticker = ps.ticker
-WHERE ps.ticker_date BETWEEN '2009-01-01' AND '2018-01-01'
-GROUP BY ss.sector, ps.ticker_date
-ORDER BY ss.sector;
+WHERE ps.ticker_date BETWEEN '2009-01-01' AND '2018-12-31'
+GROUP BY ss.sector, ps.ticker_date;
 
--- 2) prima data utile per ogni anno, ultima data utile per ogni anno, volume massimo per ogni anno
-CREATE TABLE v2 AS
-SELECT ss.sector, MIN(ps.ticker_date) AS min_date, MAX(ps.ticker_date) AS max_date, MAX(ps.volume) AS max_volume
+-- 2) per ogni settore prima data utile per ogni anno, ultima data utile per ogni anno
+CREATE VIEW t2 AS
+SELECT ss.sector, MIN(ps.ticker_date) AS min_date, MAX(ps.ticker_date) AS max_date
 FROM stocks AS ss JOIN prices AS ps ON ss.ticker = ps.ticker
-WHERE ps.ticker_date BETWEEN '2009-01-01' AND '2018-01-01'
-GROUP BY ss.sector, EXTRACT(YEAR FROM ps.ticker_date)
-ORDER BY ss.sector;
+WHERE ps.ticker_date BETWEEN '2009-01-01' AND '2018-12-31'
+GROUP BY ss.sector, EXTRACT(YEAR FROM ps.ticker_date);
 
--- 3) join tra v1 e v2 per trovare la quotazione che corrisponde alle varie date e poter fare la variazione (il join va fatto anche per settore, perché potrebbero esserci diversi settori che hanno le stesse date)
-CREATE TABLE v3 AS
-SELECT v1_1.sector, EXTRACT(YEAR FROM v2.min_date) AS yr, (v1_2.quotation - v1_1.quotation) / v1_1.quotation * 100 AS variation, v2.max_volume
-FROM v2 JOIN v1 AS v1_1 ON v2.min_date = v1_1.day 
-                        AND v2.sector = v1_1.sector
-        JOIN v1 AS v1_2 ON v2.max_date = v1_2.day
-                        AND v2.sector = v1_2.sector
-ORDER BY v1_1.sector;
+-- 3) join tra t1 e t2 per trovare la quotazione che corrisponde alle varie date (minime e massime di ogni anno) e poter fare la variazione (il join va fatto anche per settore, perché potrebbero esserci diversi settori che hanno le stesse date)
+CREATE VIEW t3 AS
+SELECT t1_1.sector, EXTRACT(YEAR FROM t2.min_date) AS yr, (t1_2.quotation - t1_1.quotation) / t1_1.quotation * 100 AS variation
+FROM t2 JOIN t1 AS t1_1 ON t2.min_date = t1_1.day 
+                        AND t2.sector = t1_1.sector
+        JOIN t1 AS t1_2 ON t2.max_date = t1_2.day
+                        AND t2.sector = t1_2.sector;
 
--- 4) join tra v3 e prices per prendere il nome dell'azione corrispondente al volume massimo (ATTENZIONE CI SONO RIPETIZIONI, VEDI COME SISTEMARE)
-CREATE TABLE v4 AS
-SELECT v3.sector, v3.yr, v3.variation, v3.max_volume, ps.ticker
-FROM v3 JOIN prices AS ps ON v3.max_volume = ps.volume
-ORDER BY v3.sector;
+-- i primi 3 passaggi svolgono il punto (a)
 
--- i primi 4 passaggi svolgono i punti a e c dell'esercizio 2 
-
--- 5) prima data utile dell'azione e ultima data utile dell'azione per ogni anno
-CREATE TABLE v5 AS
-SELECT ps.ticker, MIN(ps.ticker_date) AS min_date, MAX(ps.ticker_date) AS max_date
+-- 4) prima data utile dell'azione e ultima data utile dell'azione per ogni anno e il volume totale di ogni azione per ogni anno
+CREATE VIEW t4 AS
+SELECT ps.ticker, MIN(ps.ticker_date) AS min_date, MAX(ps.ticker_date) AS max_date, SUM(ps.volume) AS sum_volume
 FROM prices AS ps
-WHERE ps.ticker_date BETWEEN '2009-01-01' AND '2018-01-01'
+WHERE ps.ticker_date BETWEEN '2009-01-01' AND '2018-12-31'
 GROUP BY ps.ticker, EXTRACT(YEAR FROM ps.ticker_date);
 
--- 6) join per trovare i settori corrispondenti alle azioni
-CREATE TABLE v6 as
-SELECT v5.ticker, v5.min_date, v5.max_date, ss.sector
-FROM v5 JOIN stocks AS ss ON v5.ticker = ss.ticker;
+-- 5) join per trovare i settori corrispondenti alle azioni (serve perché poi il nome dell'azione con variazione massima e volume massimo va presa secondo il settore)
+CREATE VIEW t5 as
+SELECT t4.ticker, t4.min_date, t4.max_date, ss.sector, t4.sum_volume
+FROM t4 JOIN stocks AS ss ON t4.ticker = ss.ticker;
                 
--- 7) join per ticker e date varie per prendere i valori corrispondenti alle date e calcolare l'incremento
-CREATE TABLE v7 AS
-SELECT v6.ticker, v6.sector, EXTRACT(YEAR FROM v6.min_date) AS yr, (ps2.close - ps1.close) / ps1.close * 100 AS variation
-FROM v6 JOIN prices AS ps1 ON v6.min_date = ps1.ticker_date 
-                        AND v6.ticker = ps1.ticker
-        JOIN prices AS ps2 ON v6.max_date = ps2.ticker_date 
-                        AND v6.ticker = ps2.ticker
-ORDER BY v6.sector, yr;
+-- 6) join per ticker e date varie per prendere i valori corrispondenti alle date e calcolare l'incremento
+CREATE VIEW t6 AS
+SELECT t5.ticker, t5.sector, EXTRACT(YEAR FROM t5.min_date) AS yr, (ps2.close - ps1.close) / ps1.close * 100 AS variation, t5.sum_volume
+FROM t5 JOIN prices AS ps1 ON t5.min_date = ps1.ticker_date 
+                           AND t5.ticker = ps1.ticker
+        JOIN prices AS ps2 ON t5.max_date = ps2.ticker_date 
+                           AND t5.ticker = ps2.ticker;
 
--- 8) prendere la variazione massima per ogni settore e per ogni anno
-CREATE TABLE v8 AS
-SELECT v7.sector, v7.yr, MAX(v7.variation) AS max_variation
-FROM v7
-GROUP BY v7.sector, v7.yr
-ORDER BY v7.sector, v7.yr;
+-- 7) prendere la variazione massima e il volume massimo per ogni settore e per ogni anno 
+CREATE VIEW t7 AS
+SELECT t6.sector, t6.yr, MAX(t6.variation) AS max_variation, MAX(t6.sum_volume) as max_volume
+FROM t6
+GROUP BY t6.sector, t6.yr;
 
--- 9) join per prendere il nome dell'azione con variazione massima
-CREATE TABLE v9 AS
-SELECT v8.sector, v8.yr, v7.ticker, v8. max_variation
-FROM v8 JOIN v7 ON v8.yr = v7.yr
-				AND v8.sector = v7.sector
-				AND v8.max_variation = v7.variation
-ORDER BY v8.sector, v8.yr;
+-- 8) join per prendere il nome dell'azione con variazione massima e il nome dell'azione con volume massimo
+CREATE VIEW t8 AS
+SELECT t7.sector, t7.yr, t6_1.ticker AS ticker_var, t7. max_variation, t6_2.ticker AS ticker_vol, t7.max_volume
+FROM t7 JOIN t6 AS t6_1 ON t7.yr = t6_1.yr
+				        AND t7.sector = t6_1.sector
+				        AND t7.max_variation = t6_1.variation
+		JOIN t6 AS t6_2 ON t7.yr = t6_2.yr
+				        AND t7.sector = t6_2.sector
+				        AND t7.max_volume = t6_2.sum_volume;
 
--- 10) join finale
-SELECT v4.sector, v4.yr, v4.variation, v9.ticker, v9.max_variation, v4.ticker, v4.max_volume
-FROM v9 JOIN v4 ON v9.sector = v4.sector
-                AND v9.yr = v4.yr
-ORDER BY v4.sector, v4.yr;
+-- 9) join finale per unire i risultati del punto (a) con quelli dei punti (b) e (c)
+CREATE TABLE t9 AS
+SELECT t3.sector, t3.yr, t3.variation, t8.ticker_var, t8.max_variation, t8.ticker_vol, t8.max_volume
+FROM t8 JOIN t3 ON t8.sector = t3.sector
+                AND t8.yr = t3.yr
+ORDER BY t3.sector;
 
 DROP TABLE prices;
 DROP TABLE stocks;
-DROP TABLE v1;
-DROP TABLE v2;
-DROP TABLE v3;
-DROP TABLE v4;
-DROP TABLE v5;
-DROP TABLE v6;
-DROP TABLE v7;
-DROP TABLE v8;
-DROP TABLE v9;
+DROP VIEW t1;
+DROP VIEW t2;
+DROP VIEW t3;
+DROP VIEW t4;
+DROP VIEW t5;
+DROP VIEW t6;
+DROP VIEW t7;
+DROP VIEW t8;
