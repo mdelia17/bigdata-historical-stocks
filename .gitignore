@@ -1,0 +1,24 @@
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### Folders ###
+dataset/
+output/
+other_dataset/
+dataset_raw/
+
+### Jupyter ###
+.ipynb_checkpoints
+
+### .pem ###
+*.pem
+
+### .sh ###
+*.sh
+
+### .ipynb ###
+*.ipynb
