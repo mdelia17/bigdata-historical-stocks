@@ -5,6 +5,10 @@ import sys
 from datetime import datetime
 
 TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+def perc(a, b):
+    return float("{:.5f}".format(float((b-a)/a*100)))
+
 sector_2_set ={}
 
 for line in sys.stdin:
@@ -12,7 +16,7 @@ for line in sys.stdin:
     sector, ticker, date, close, volume = line.split("\t")
     try:
         date = datetime.strptime(date, TIMESTAMP_FORMAT)
-        close = float(close)
+        close = float("{:.5f}".format(float(close)))
         volume = int(volume)
     except ValueError as e:
         print(e)
@@ -45,7 +49,7 @@ for line in sys.stdin:
         
 sorted_sector_2_set = sorted(sector_2_set.items(), key=lambda x: x[0][0], reverse=False)
 for elem in sorted_sector_2_set:
-    percentuale = (sum(elem[1][3])-sum(elem[1][2]))/sum(elem[1][2]) * 100
+    percentuale = perc([1][2],[1][3])
     ticker_percent_max = ""
     percentuale_max = -1000000000000
     ticker_volume_max = ""
@@ -53,7 +57,7 @@ for elem in sorted_sector_2_set:
     ticker_2_set = elem[1][4]
     
     for ticker in ticker_2_set:
-        percentuale2 = (ticker_2_set[ticker][3] - ticker_2_set[ticker][2])/ticker_2_set[ticker][2] * 100
+        percentuale2 = perc(ticker_2_set[ticker][2],ticker_2_set[ticker][3])
         if percentuale2 > percentuale_max :
             ticker_percent_max = ticker
             percentuale_max = percentuale2

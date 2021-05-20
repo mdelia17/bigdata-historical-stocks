@@ -9,11 +9,9 @@ prices_2_set = {}
 stocks_2_set = {}
 
 for line in sys.stdin:
-    #print(str(line))
     line = line.strip()
     line = line.split("\t")
     if len(line)==3:
-        #print(str(line))
         ticker = line[0]
         close = line[1]
         date = line[2]
@@ -24,7 +22,6 @@ for line in sys.stdin:
             continue
         prices_2_set[(ticker,date)] = [close]
     elif len(line)==2:
-        #print(str(line))
         ticker = line[0]
         name = line[1]
         stocks_2_set[ticker] = name

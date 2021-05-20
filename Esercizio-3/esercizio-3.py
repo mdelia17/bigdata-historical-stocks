@@ -2,22 +2,46 @@
 """spark application"""
 import argparse
 
-# create parser and set its arguments
 from pyspark.sql import SparkSession
 from datetime import datetime
 
+TIMESTAMP_FORMAT = "%Y-%m-%d"
 
+def perc(a, b):
+    return float("{:.5f}".format(float((b-a)/a*100)))
+
+def ticker_month_reduction(line1, line2): 
+    datamin, datamax, closemin, closemax = tuple(line1)
+    if datamin == line2[0]:
+        closemin += line2[2]
+    if datamin > line2[0]:
+        datamin = line2[0]
+        closemin = line2[2]
+    if datamax == line2[1]:
+        closemin += line2[3]
+    if datamax < line2[1]:
+        datamax = line2[1]
+        closemax = line2[3]
+    return [datamin, datamax, closemin, closemax]
+
+def partFunc(aggr, line):
+    aggr[line[0]-1] = line[1]
+    return aggr
+ 
+def combFunc(aggr1, aggr2):
+    for i in range(len(aggr2)): 
+        if aggr2[i] != "-":
+            aggr1[i] = aggr2[i]
+    return aggr1
+    
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_path", type=str, help="Input file path")
 parser.add_argument("--input_path2", type=str, help="Input file path")
 parser.add_argument("--output_path", type=str, help="Output folder path")
 
-# parse arguments
 args = parser.parse_args()
 input_filepath, input_filepath2, output_filepath = args.input_path, args.input_path2, args.output_path
 
-# initialize SparkSession
-# with the proper configuration
 spark = SparkSession \
     .builder \
     .appName("Esercizio-3") \
@@ -26,92 +50,51 @@ spark = SparkSession \
 input_RDD = spark.sparkContext.textFile(input_filepath).cache()
 input_RDD2 = spark.sparkContext.textFile(input_filepath2).cache()
 
-TIMESTAMP_FORMAT = "%Y-%m-%d"
-def sum_min(line1, line2): 
-    #print(line1, line2)
-    datamin, datamax, closemin, closemax = tuple(line1)
-    if line1[0] == line2[0]:
-        closemin += line2[2]
-    if line1[0] > line2[0]:
-        datamin = line2[0]
-        closemin = line2[2]
-    if line1[1] == line2[1]:
-        closemin += line2[3]
-    if line1[1] < line2[1]:
-        datamax = line2[1]
-        closemax = line2[3]
-    return [datamin, datamax, closemin, closemax]
-    
-# ogni elemento del RDD è una lista di valori
 lines_RDD = input_RDD.map(lambda line: line.strip().split(","))
 lines_RDD2 = input_RDD2.map(lambda line: line.strip().split(","))
 
-# tolgo i campi che non servono
-prices_RDD = lines_RDD.map(lambda line: [ (line[0], datetime.strptime(line[7], TIMESTAMP_FORMAT).month), [ line[7], line[7], line[2], line[2] ] ])
+prices_RDD = lines_RDD.map(lambda line: [ (line[0], datetime.strptime(line[7], TIMESTAMP_FORMAT).month), [ line[7], line[7], float("{:.5f}".format(float(line[2]))), float("{:.5f}".format(float(line[2])))] ])
 stocks_RDD = lines_RDD2.map(lambda line: [ line[0], line[2] ])
 
-# teniamo solo i record nel 2017
 prices_RDD = prices_RDD.filter(lambda line: datetime.strptime(line[1][0], TIMESTAMP_FORMAT).year == 2017)
 
-# facciamo il join
-# join_RDD = prices_RDD.join(stocks_RDD)
+ticker_month_min_max_RDD = prices_RDD.reduceByKey(ticker_month_reduction)
 
-stock_min_max_RDD = prices_RDD.reduceByKey(sum_min)
+sticker_month_perc_RDD = ticker_month_min_max_RDD.map(lambda line: [line[0][0], [ line[0][1], perc(line[1][2],line[1][3])] ])
 
-stock_min_max_RDD = stock_min_max_RDD.map(lambda line: [line[0][0], [ line[0][1], (float(line[1][3])-float(line[1][2]))/float(line[1][2]) * 100] ])
+join_RDD = sticker_month_perc_RDD.join(stocks_RDD)
 
-join_RDD = stock_min_max_RDD.join(stocks_RDD)
+name_month_percent_RDD = join_RDD.map(lambda line: [ (line[1][1], line[1][0][0]), [line[1][0][1], 1]])
 
-join_RDD = join_RDD.map(lambda line: [ (line[1][1], line[1][0][0]), [line[1][0][1], 1]])
+name_month_percent_RDD = name_month_percent_RDD.reduceByKey(lambda a, b: [a[0]+b[0], a[1]+1])
 
-join_RDD = join_RDD.reduceByKey(lambda a, b: [a[0]+b[0], a[1]+1])
+name_month_average_RDD = name_month_percent_RDD.map(lambda line: [ line[0][0], [line[0][1], float("{:.5f}".format(float(line[1][0]/line[1][1])))] ])
 
-join_RDD = join_RDD.map(lambda line: [ line[0][0], [line[0][1], line[1][0]/line[1][1]] ])
+name_trend_RDD = name_month_average_RDD.aggregateByKey(["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], partFunc, combFunc)
 
-def seqFunc(acc, teams):
-    acc[teams[0]-1] = teams[1]
-    return acc
- 
-def combFunc(acc1, acc2):
-    for i in range(len(acc2)): 
-        if acc2[i] != "-":
-            acc1[i] = acc2[i]
-    return acc1
+all_pairs_RDD = name_trend_RDD.cartesian(name_trend_RDD)
 
-join_RDD = join_RDD.aggregateByKey(["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], seqFunc, combFunc)
+SOGLIA = 1
+SOGLIA_MESI_COMUNE = 6
 
-join_RDD = join_RDD.cartesian(join_RDD)
+def check_pairs(line):
+    mesi_comuni = 0
+    if line[0][0] != line[1][0]:
+        for i in range(12):
+            if line[0][1][i] == "-" and line[1][1][i] != "-" or line[0][1][i] != "-" and line[1][1][i] == "-":
+                return False
+            if line[0][1][i] == "-" and line[1][1][i] == "-":
+                continue
+            diff = abs(float(line[0][1][i]) - float(line[1][1][i])) 
+            if diff <= SOGLIA:
+                mesi_comuni +=1 
+                continue
+            else:
+                return False
+        return mesi_comuni >= SOGLIA_MESI_COMUNE
+    else: 
+        return False
 
-# # azione del settore con maggior incremento percentuale e volume
-# ticker_percent_vol_RDD = join_RDD.map(lambda line: [(line[0], datetime.strptime(line[1][0][2], TIMESTAMP_FORMAT).year, line[1][1]), [line[1][0][2], line[1][0][2], line[1][0][0], line[1][0][0], line[1][0][1]]])
-# # output_RDD = stock_date_first_last_percent_RDD.join(stock_min_max_RDD)
-# # sorted_output_RDD = output_RDD.sortBy(lambda word: word[1][0][0], ascending=False)
-# # sorted_output_RDD = sorted_output_RDD.map(lambda word: [word[0], word[1][0][1], word[1][0][0], word[1][0][2], word[1][1][1], word[1][1][0]])
-# ticker_percent_vol_RDD = ticker_percent_vol_RDD.reduceByKey(sum_min2)
+all_similar_pairs_RDD = all_pairs_RDD.filter(check_pairs)
 
-# ticker_percent_vol_RDD = ticker_percent_vol_RDD.map(lambda line: [(line[0][2], line[0][1]), [line[0][0], (float(line[1][3])-float(line[1][2]))/float(line[1][2]) * 100 , line[0][0], line[1][4]]])
-# ticker_percent_vol_RDD = ticker_percent_vol_RDD.reduceByKey(ticker_percent_ticker_vol)
-
-# final_RDD = ticker_percent_vol_RDD.join(stock_min_max_RDD)
-
-# final_RDD = final_RDD.map(lambda line: [line[0][0], line[0][1], line[1][1], line[1][0][0], line[1][0][1], line[1][0][2], line[1][0][3]] )
-
-# sorted_final_RDD = final_RDD.sortBy(lambda line: line[0], ascending=True)
-
-record = join_RDD.first()
-app_RDD = spark.sparkContext.parallelize([record])
-cart_RDD = join_RDD.cartesian(app_RDD)
-
-lines2 = cart_RDD.collect()
-
-spark.sparkContext.parallelize([lines2]) \
-                   .saveAsTextFile(output_filepath)
-
-# def rispetta_soglia(): 
-
-# for record in lines:
-#     app_RDD = spark.sparkContext.parallelize([record])
-#     cart_RDD = join_RDD.cartesian(app_RDD)
-#     cart_filtered_RDD = cart_RDD.filter(rispetta_soglia)
-                  
-# sorted_final_RDD.coalesce(1,True).saveAsTextFile(output_filepath)
+all_similar_pairs_RDD.coalesce(1,True).saveAsTextFile(output_filepath)
