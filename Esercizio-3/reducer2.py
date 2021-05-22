@@ -22,10 +22,6 @@ for line in sys.stdin:
     if (ticker, date.month) not in ticker_month_2_set:
         ticker_month_2_set[(ticker, date.month)] = [date, close, date, close, name]
     else: 
-        if ticker_month_2_set[(ticker, date.month)][0] == date: 
-            ticker_month_2_set[(ticker, date.month)][1] += close
-        if ticker_month_2_set[(ticker, date.month)][2] == date: 
-            ticker_month_2_set[(ticker, date.month)][3] += close
         if ticker_month_2_set[(ticker, date.month)][0] > date: 
             ticker_month_2_set[(ticker, date.month)][0] = date
             ticker_month_2_set[(ticker, date.month)][1] = close

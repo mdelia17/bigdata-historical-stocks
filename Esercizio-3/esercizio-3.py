@@ -6,19 +6,35 @@ from pyspark.sql import SparkSession
 from datetime import datetime
 
 TIMESTAMP_FORMAT = "%Y-%m-%d"
+SOGLIA = 1
+SOGLIA_MESI_COMUNE = 6
+
+def check_pairs(line):
+    mesi_comuni = 0
+    if line[0][0] != line[1][0]:
+        for i in range(12):
+            if line[0][1][i] == "-" and line[1][1][i] != "-" or line[0][1][i] != "-" and line[1][1][i] == "-":
+                return False
+            if line[0][1][i] == "-" and line[1][1][i] == "-":
+                continue
+            diff = abs(float(line[0][1][i]) - float(line[1][1][i])) 
+            if diff <= SOGLIA:
+                mesi_comuni +=1 
+                continue
+            else:
+                return False
+        return mesi_comuni >= SOGLIA_MESI_COMUNE
+    else: 
+        return False
 
 def perc(a, b):
     return float("{:.5f}".format(float((b-a)/a*100)))
 
 def ticker_month_reduction(line1, line2): 
     datamin, datamax, closemin, closemax = tuple(line1)
-    if datamin == line2[0]:
-        closemin += line2[2]
     if datamin > line2[0]:
         datamin = line2[0]
         closemin = line2[2]
-    if datamax == line2[1]:
-        closemin += line2[3]
     if datamax < line2[1]:
         datamax = line2[1]
         closemax = line2[3]
@@ -60,9 +76,9 @@ prices_RDD = prices_RDD.filter(lambda line: datetime.strptime(line[1][0], TIMEST
 
 ticker_month_min_max_RDD = prices_RDD.reduceByKey(ticker_month_reduction)
 
-sticker_month_perc_RDD = ticker_month_min_max_RDD.map(lambda line: [line[0][0], [ line[0][1], perc(line[1][2],line[1][3])] ])
+ticker_month_perc_RDD = ticker_month_min_max_RDD.map(lambda line: [line[0][0], [ line[0][1], perc(line[1][2],line[1][3])] ])
 
-join_RDD = sticker_month_perc_RDD.join(stocks_RDD)
+join_RDD = ticker_month_perc_RDD.join(stocks_RDD)
 
 name_month_percent_RDD = join_RDD.map(lambda line: [ (line[1][1], line[1][0][0]), [line[1][0][1], 1]])
 
@@ -73,27 +89,6 @@ name_month_average_RDD = name_month_percent_RDD.map(lambda line: [ line[0][0], [
 name_trend_RDD = name_month_average_RDD.aggregateByKey(["-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"], partFunc, combFunc)
 
 all_pairs_RDD = name_trend_RDD.cartesian(name_trend_RDD)
-
-SOGLIA = 1
-SOGLIA_MESI_COMUNE = 6
-
-def check_pairs(line):
-    mesi_comuni = 0
-    if line[0][0] != line[1][0]:
-        for i in range(12):
-            if line[0][1][i] == "-" and line[1][1][i] != "-" or line[0][1][i] != "-" and line[1][1][i] == "-":
-                return False
-            if line[0][1][i] == "-" and line[1][1][i] == "-":
-                continue
-            diff = abs(float(line[0][1][i]) - float(line[1][1][i])) 
-            if diff <= SOGLIA:
-                mesi_comuni +=1 
-                continue
-            else:
-                return False
-        return mesi_comuni >= SOGLIA_MESI_COMUNE
-    else: 
-        return False
 
 all_similar_pairs_RDD = all_pairs_RDD.filter(check_pairs)
 

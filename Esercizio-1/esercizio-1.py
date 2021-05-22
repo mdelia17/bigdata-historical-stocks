@@ -10,7 +10,7 @@ def percentuale(a, b):
     return float("{:.5f}".format(float((b-a)/a*100)))
     
 def aggregate(line1, line2):
-    firstclose, lastclose, min, max, firstdate, lastdate, open, close, date, curr_strike, max_strike, max_year_strike = tuple(line1)
+    firstclose, lastclose, min, max, firstdate, lastdate, open, close, date, curr_streak, max_streak, max_year_streak = tuple(line1)
     if min > line2[2]:
         min = line2[2]
     if max < line2[3]:
@@ -22,22 +22,22 @@ def aggregate(line1, line2):
         lastdate = line2[5]
         lastclose = line2[1]
 
-    if close<=open and curr_strike == 1: 
-        curr_strike = 0
-        max_year_strike = 0
+    if close<=open and curr_streak == 1: 
+        curr_streak = 0
+        max_year_streak = 0
 
     if line2[7]>line2[6]:
         if (line2[8]-date).days == 1:
-            curr_strike = curr_strike + 1
+            curr_streak = curr_streak + 1
         else: 
-            curr_strike = 1
-        if curr_strike >= max_strike:
-            max_strike = curr_strike
-            max_year_strike = line2[8].year
+            curr_streak = 1
+        if curr_streak >= max_streak:
+            max_streak = curr_streak
+            max_year_streak = line2[8].year
     else:   
-        curr_strike = 0 
+        curr_streak = 0 
 
-    return [firstclose, lastclose, min, max, firstdate, lastdate, line2[6], line2[7], line2[8], curr_strike, max_strike, max_year_strike]
+    return [firstclose, lastclose, min, max, firstdate, lastdate, line2[6], line2[7], line2[8], curr_streak, max_streak, max_year_streak]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_path", type=str, help="Input file path")

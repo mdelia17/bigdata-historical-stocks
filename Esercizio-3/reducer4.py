@@ -9,15 +9,15 @@ SOGLIA = 1
 SOGLIA_MESI_COMUNE = 6
 LISTA_MESI = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SETT", "OTT", "NOV", "DIC"]
 
-def update (name1, name2, similarity): 
+def update (name1, name2): 
     if name1 not in similarity_dict_2_set: 
-        similarity_dict_2_set[name1] = [(name2,similarity)]
+        similarity_dict_2_set[name1] = [name2]
     else: 
-        similarity_dict_2_set[name1].append((name2,similarity))
+        similarity_dict_2_set[name1].append(name2)
     if name2 not in similarity_dict_2_set: 
-        similarity_dict_2_set[name2] = [(name1,similarity)]
+        similarity_dict_2_set[name2] = [name1]
     else: 
-        similarity_dict_2_set[name2].append((name1,similarity))
+        similarity_dict_2_set[name2].append(name1)
 
 for line in sys.stdin:
     line = line.strip()
@@ -30,7 +30,7 @@ for x in range(len(keys)-1):
     i = keys[x]
     for y in range(x+1,len(keys)):
         j = keys[y]
-        delta = 0
+        # delta = 0
         mesi_comuni = 0
         flag = False
         for k in range(12):
@@ -41,13 +41,13 @@ for x in range(len(keys)-1):
                 continue
             diff = abs(float(name_2_set[i][k]) - float(name_2_set[j][k])) 
             if diff <= SOGLIA: 
-                delta += diff
+                # delta += diff
                 mesi_comuni +=1
             else:
                 flag = True
                 break
         if flag==False and mesi_comuni >= SOGLIA_MESI_COMUNE:
-            update(i, j, delta)
+            update(i, j)
 
 for name in similarity_dict_2_set:
     # nome_sim_min = ""
@@ -57,12 +57,12 @@ for name in similarity_dict_2_set:
         # if elem[1] < sim_min: 
         #     nome_sim_min = elem[0]
         #     sim_min = elem[1]
-        result1 = "{" + name + "," + elem[0] + "}: "
+        result1 = "{" + name + "," + elem + "}: "
         result = ""
         for i in range(len(name_2_set[name])):
             try:
                 perc_1 = float(name_2_set[name][i])
-                perc_2 = float(name_2_set[elem[0]][i]) 
+                perc_2 = float(name_2_set[elem][i]) 
             except:
                 continue
             perc_1 = float("{:.2f}".format(perc_1))
