@@ -1,9 +1,10 @@
-# primoprogetto-bigdata
+# Primo progetto - Big Data
 
 Questo repository contiene il codice relativo al progetto svolto da Andrea Mariani, Gianluca Mariani e Marco D'Elia,
 relativo al corso di [Big Data](http://torlone.dia.uniroma3.it/bigdata/),
 tenuto dal prof. [Riccardo Torlone](http://torlone.dia.uniroma3.it/),
-nell'anno accademico 2020-2021.
+nell'anno accademico 2020-2021,
+con riferimento alle tecnologie MapReduce, Hive e Spark.
 
 ## Accesso al repository 
 
@@ -22,7 +23,7 @@ Per aggiornare il contenuto della propria copia locale del repository:
 ## Organizzazione del repository 
 
 Questo repository è organizzato in diverse sezioni (cartelle):
-* [Notebooks](notebooks/)
-* [Esercizio-1](Esercizio-1/)
-* [Esercizio-2](Esercizio-2/)
-* [Esercizio-3](Esercizio-3/)
+* [Notebooks](Notebooks/): contenente i notebooks per il preprocessing e la generazione dei dataset di dimensione diversa, e il notebook per il plot dei grafici con i tempi di esecuzione
+* [Esercizio-1](Esercizio-1/): contenente i file .py e .hql per l'esecuzione del job in MapReduce, Hive e Spark
+* [Esercizio-2](Esercizio-2/): contenente i file .py e .hql per l'esecuzione del job in MapReduce, Hive e Spark
+* [Esercizio-3](Esercizio-3/): contenente i file .py e .hql per l'esecuzione del job in MapReduce, Hive e Spark
