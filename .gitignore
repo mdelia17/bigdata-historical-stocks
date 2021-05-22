@@ -7,6 +7,18 @@
 
 ### Dataset ###
 dataset/
+dataset_raw/
+output/
+plot/
 
 ### Jupyter ###
 .ipynb_checkpoints
+
+### .pem ###
+*.pem
+
+### .sh ###
+*.sh
+
+### .gitignore ###
+*.gitignore
